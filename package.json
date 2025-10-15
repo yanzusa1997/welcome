@@ -1,12 +1,13 @@
 {
   "name": "chainers-bot",
   "version": "1.0.0",
-  "main": "bot.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "node-fetch": "^3.3.2"
   }
 }
