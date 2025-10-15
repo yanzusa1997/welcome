@@ -37,7 +37,6 @@ async function getInventory() {
     return data.data.items;
 }
 
-// cek apakah seedID ready di inventory
 async function waitForSeed(seedID) {
     while (true) {
         const inventory = await getInventory();
@@ -64,7 +63,7 @@ async function waitForSeed(seedID) {
 }
 
 async function plantSeed(userGardensID, userBedsID, seedID) {
-    await waitForSeed(seedID); // cek dulu sebelum plant
+    await waitForSeed(seedID);
     const res = await fetch(`${API_BASE}/control/plant-seed`, {
         method: "POST",
         headers: {
@@ -113,6 +112,36 @@ async function harvestSeed(userFarmingID, bed) {
     }
 }
 
+// === CEK AWAL ===
+async function initialCheck(userGardensID, beds) {
+    console.log("🔍 Cek kondisi awal semua bed...\n");
+
+    for (const bed of beds) {
+        const farming = bed.currentFarming;
+        if (farming) {
+            const { userFarmingID, plantedAt, growthTime } = farming;
+            const harvestTime =
+                new Date(plantedAt).getTime() + growthTime * 1000;
+
+            if (Date.now() >= harvestTime) {
+                console.log(`🌾 Bed ${bed.userBedsID} sudah siap panen!`);
+                await harvestSeed(userFarmingID, bed.userBedsID);
+                await new Promise((r) => setTimeout(r, 1000));
+            } else {
+                const sisa = Math.floor((harvestTime - Date.now()) / 1000);
+                console.log(
+                    `⏳ Bed ${bed.userBedsID} belum matang (${sisa}s lagi)`,
+                );
+            }
+        } else {
+            console.log(`🪴 Bed ${bed.userBedsID} kosong, siap ditanam.`);
+        }
+    }
+
+    console.log("\n✅ Cek awal selesai.\n");
+}
+
+// === MAIN LOOP ===
 async function startBot() {
     while (true) {
         try {
@@ -120,13 +149,18 @@ async function startBot() {
             const userGardensID = garden.userGardensID;
             const beds = garden.placedBeds;
 
+            // 🔁 Cek & harvest dulu sebelum tanam
+            await initialCheck(userGardensID, beds);
+
             let planted = [];
             for (let i = 0; i < beds.length && i < seedIDs.length; i++) {
+                const bed = beds[i];
+                if (bed.currentFarming) continue; // skip bed yang sedang tumbuh
+
                 const seedID = seedIDs[i];
-                const bed = beds[i].userBedsID;
-                const result = await plantSeed(userGardensID, bed, seedID);
+                const result = await plantSeed(userGardensID, bed.userBedsID, seedID);
                 if (result) planted.push(result);
-                await new Promise((r) => setTimeout(r, 1000)); // delay biar aman
+                await new Promise((r) => setTimeout(r, 1000));
             }
 
             if (planted.length === 0) {
@@ -135,7 +169,6 @@ async function startBot() {
                 continue;
             }
 
-            // simpan waktu harvest untuk tiap tanaman
             const harvestQueue = planted.map((p) => ({
                 ...p,
                 harvestTime: Date.now() + p.growthTime * 1000,
@@ -146,12 +179,10 @@ async function startBot() {
                 console.log(`   - ${p.seedCode}: ${p.growthTime}s`);
             });
 
-            // harvest satu per satu saat sudah matang
             while (harvestQueue.length > 0) {
                 const now = Date.now();
                 const readyToHarvest = [];
 
-                // cari tanaman yang sudah matang
                 for (let i = harvestQueue.length - 1; i >= 0; i--) {
                     if (now >= harvestQueue[i].harvestTime) {
                         readyToHarvest.push(harvestQueue[i]);
@@ -159,18 +190,16 @@ async function startBot() {
                     }
                 }
 
-                // harvest tanaman yang sudah matang
                 for (let p of readyToHarvest) {
                     await harvestSeed(p.userFarmingID, p.bed);
                     await new Promise((r) => setTimeout(r, 1000));
                 }
 
-                // masih ada yang belum matang? tunggu sebentar
                 if (harvestQueue.length > 0) {
                     const nextHarvest = Math.min(
                         ...harvestQueue.map((p) => p.harvestTime),
                     );
-                    const waitTime = Math.min(nextHarvest - Date.now(), 5000); // cek max tiap 5s
+                    const waitTime = Math.min(nextHarvest - Date.now(), 5000);
                     if (waitTime > 0) {
                         await new Promise((r) => setTimeout(r, waitTime));
                     }
