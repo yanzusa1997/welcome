@@ -128,20 +128,22 @@ async function harvestSeed(userFarmingID, bed) {
     }
 }
 
-// === PERBAIKAN initialCheck ===
+// === PERBAIKAN BESAR initialCheck ===
 async function initialCheck(userGardensID, beds) {
     console.log("🔍 Cek kondisi awal semua bed...\n");
+
     let adaHarvest = false;
+    let nextHarvestTimes = []; // simpan waktu panen berikutnya
 
     for (const bed of beds) {
-        const farming = bed.plantedSeed; // sesuai struktur data kamu
+        const farming = bed.plantedSeed;
         if (farming) {
             const { userFarmingID, plantedDate, growthTime } = farming;
             const harvestTime =
                 new Date(plantedDate).getTime() + growthTime * 1000;
 
             if (Date.now() >= harvestTime) {
-                console.log(`🌾 Bed ${bed.userBedsID} siap panen!`);
+                console.log(`🌾 Bed ${bed.userBedsID} sudah matang, panen...`);
                 await harvestSeed(userFarmingID, bed.userBedsID);
                 adaHarvest = true;
                 await new Promise((r) => setTimeout(r, 1000));
@@ -150,6 +152,7 @@ async function initialCheck(userGardensID, beds) {
                 console.log(
                     `⏳ Bed ${bed.userBedsID} belum matang (${sisa}s lagi).`
                 );
+                nextHarvestTimes.push(harvestTime);
             }
         } else {
             console.log(`🪴 Bed ${bed.userBedsID} kosong, siap ditanam.`);
@@ -157,16 +160,29 @@ async function initialCheck(userGardensID, beds) {
     }
 
     if (adaHarvest) {
-        console.log("♻️ Sudah panen tanaman yang matang. Akan cek ulang bed...");
-        return true; // ada panen, nanti diulang cek bed lagi
+        console.log("♻️ Sudah panen tanaman yang matang. Akan cek ulang bed...\n");
+        return { action: "recheck" }; // ada panen, ulang cek garden
     }
 
-    console.log("\n✅ Cek awal selesai.\n");
-    return false; // tidak ada panen, lanjut tanam
+    if (nextHarvestTimes.length > 0) {
+        const nextTime = Math.min(...nextHarvestTimes);
+        const waitSeconds = Math.floor((nextTime - Date.now()) / 1000);
+
+        if (waitSeconds > 0) {
+            console.log(
+                `🕒 Semua tanaman belum matang, tunggu ${waitSeconds}s sampai panen berikutnya...`
+            );
+            await new Promise((r) => setTimeout(r, waitSeconds * 1000));
+        }
+        return { action: "waited" }; // sudah tunggu sampai waktu panen berikutnya
+    }
+
+    console.log("\n✅ Semua bed kosong, lanjut tanam.\n");
+    return { action: "plant" };
 }
 
 
-// === MAIN LOOP ===
+
 async function startBot() {
     while (true) {
         try {
@@ -175,21 +191,32 @@ async function startBot() {
             const beds = garden.placedBeds;
 
             // 🔁 Cek & harvest dulu sebelum tanam
-            await initialCheck(userGardensID, beds);
+            const check = await initialCheck(userGardensID, beds);
 
+            if (check.action === "recheck") {
+                // Ada yang baru dipanen, cek ulang dari awal
+                continue;
+            }
+
+            if (check.action === "waited") {
+                // Sudah nunggu tanaman matang, ulangi lagi loop
+                continue;
+            }
+
+            // Hanya lanjut tanam jika semua bed kosong
             let planted = [];
             for (let i = 0; i < beds.length && i < seedIDs.length; i++) {
                 const bed = beds[i];
-                if (bed.currentFarming) continue; // skip bed yang sedang tumbuh
+                if (bed.plantedSeed) continue; // skip bed yang ada tanaman
 
                 const seedID = seedIDs[i];
-                const result = await plantSeed(userGardensID, bed.userBedsID, seedID);
+                const result = await plantSeed(userGardensID, bed.userBedsID, seedID, beds);
                 if (result) planted.push(result);
                 await new Promise((r) => setTimeout(r, 1000));
             }
 
             if (planted.length === 0) {
-                console.log("⚠️ Tidak ada yang berhasil ditanam, retry...");
+                console.log("⚠️ Tidak ada yang berhasil ditanam, retry 5 detik...");
                 await new Promise((r) => setTimeout(r, 5000));
                 continue;
             }
@@ -200,9 +227,9 @@ async function startBot() {
             }));
 
             console.log(`⏳ Menunggu ${planted.length} tanaman matang...`);
-            planted.forEach((p) => {
-                console.log(`   - ${p.seedCode}: ${p.growthTime}s`);
-            });
+            planted.forEach((p) =>
+                console.log(`   - ${p.seedCode}: ${p.growthTime}s`)
+            );
 
             while (harvestQueue.length > 0) {
                 const now = Date.now();
@@ -222,7 +249,7 @@ async function startBot() {
 
                 if (harvestQueue.length > 0) {
                     const nextHarvest = Math.min(
-                        ...harvestQueue.map((p) => p.harvestTime),
+                        ...harvestQueue.map((p) => p.harvestTime)
                     );
                     const waitTime = Math.min(nextHarvest - Date.now(), 5000);
                     if (waitTime > 0) {
@@ -238,5 +265,6 @@ async function startBot() {
         }
     }
 }
+
 
 startBot();
