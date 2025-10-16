@@ -3,7 +3,7 @@ const fetch = (...args) =>
 
 // === CONFIG ===
 const AUTH_TOKEN =
-    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uSUQiOiI2OGRlMGQ3MmJkMzY1OTNiOGIwZGEyMzkiLCJ1c2Vyc0lEIjoiNjNmZDRmNGI1MzFhYjVjZTUwMmUzOGMyIiwiaWF0IjoxNzU5MzgyODk4LCJleHAiOjE3NjA1ODI4OTh9.Vw1MCzZf5JnGds-rYcdH7dgjaK235C5Eg3g4HzT8mNQ"; // token kamu
+    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uSUQiOiI2OGU3ZjUwMWRkOTdmYTFhZjA1ZDIwMTUiLCJ1c2Vyc0lEIjoiNjNmZDRmNGI1MzFhYjVjZTUwMmUzOGMyIiwiaWF0IjoxNzYwMDMyMDAxLCJleHAiOjE3NjEyMzIwMDF9.labScVEXPBpKNVB65eG2fCwO-Mq4vlh5D1W9zvjO2Ig"; // token kamu
 const API_BASE = "https://chainers.io/api/farm";
 
 // isi manual sesuai jumlah plot (harus urut sama urutan bed)
