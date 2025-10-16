@@ -37,30 +37,44 @@ async function getInventory() {
     return data.data.items;
 }
 
-async function waitForSeed(seedID) {
+// === PERBAIKAN waitForSeed ===
+async function waitForSeed(seedID, userGardensID, beds) {
+    let retry = 0;
     while (true) {
         const inventory = await getInventory();
         const item = inventory.find((i) => i.itemID === seedID);
         if (!item) {
+            retry++;
             console.log(
-                `⚠️ Seed ${seedID} tidak ada di inventory. Tunggu 10s...`,
+                `⚠️ Seed ${seedID} tidak ada di inventory. Coba lagi (${retry}/3)...`
             );
+
+            // 🔁 Setelah 3 kali gagal cek, ulangi cek bed
+            if (retry >= 3) {
+                console.log(
+                    "🔁 Sudah 3x tidak menemukan seed. Cek ulang kondisi bed..."
+                );
+                const garden = await getGardens();
+                const ulang = await initialCheck(userGardensID, garden.placedBeds);
+                if (ulang) retry = 0; // reset jika ada panen
+            }
+
             await new Promise((r) => setTimeout(r, 10000));
             continue;
         }
+
         if (item.inventoryType === "active") {
-            console.log(
-                `✅ Seed ${item.itemCode} (${seedID}) ready untuk ditanam.`,
-            );
+            console.log(`✅ Seed ${item.itemCode} (${seedID}) ready untuk ditanam.`);
             return;
         } else {
             console.log(
-                `⏳ Seed ${item.itemCode} belum aktif (status=${item.inventoryType}), cek lagi 15s...`,
+                `⏳ Seed ${item.itemCode} belum aktif (status=${item.inventoryType}), cek lagi 60s...`
             );
             await new Promise((r) => setTimeout(r, 60000));
         }
     }
 }
+
 
 async function plantSeed(userGardensID, userBedsID, seedID) {
     await waitForSeed(seedID);
@@ -112,25 +126,27 @@ async function harvestSeed(userFarmingID, bed) {
     }
 }
 
-// === CEK AWAL ===
+// === PERBAIKAN initialCheck ===
 async function initialCheck(userGardensID, beds) {
     console.log("🔍 Cek kondisi awal semua bed...\n");
+    let adaHarvest = false;
 
     for (const bed of beds) {
-        const farming = bed.currentFarming;
+        const farming = bed.plantedSeed; // sesuai struktur data kamu
         if (farming) {
-            const { userFarmingID, plantedAt, growthTime } = farming;
+            const { userFarmingID, plantedDate, growthTime } = farming;
             const harvestTime =
-                new Date(plantedAt).getTime() + growthTime * 1000;
+                new Date(plantedDate).getTime() + growthTime * 1000;
 
             if (Date.now() >= harvestTime) {
-                console.log(`🌾 Bed ${bed.userBedsID} sudah siap panen!`);
+                console.log(`🌾 Bed ${bed.userBedsID} siap panen!`);
                 await harvestSeed(userFarmingID, bed.userBedsID);
+                adaHarvest = true;
                 await new Promise((r) => setTimeout(r, 1000));
             } else {
                 const sisa = Math.floor((harvestTime - Date.now()) / 1000);
                 console.log(
-                    `⏳ Bed ${bed.userBedsID} belum matang (${sisa}s lagi)`,
+                    `⏳ Bed ${bed.userBedsID} belum matang (${sisa}s lagi).`
                 );
             }
         } else {
@@ -138,8 +154,15 @@ async function initialCheck(userGardensID, beds) {
         }
     }
 
+    if (adaHarvest) {
+        console.log("♻️ Sudah panen tanaman yang matang. Akan cek ulang bed...");
+        return true; // ada panen, nanti diulang cek bed lagi
+    }
+
     console.log("\n✅ Cek awal selesai.\n");
+    return false; // tidak ada panen, lanjut tanam
 }
+
 
 // === MAIN LOOP ===
 async function startBot() {
