@@ -76,8 +76,9 @@ async function waitForSeed(seedID, userGardensID, beds) {
 }
 
 
-async function plantSeed(userGardensID, userBedsID, seedID) {
-    await waitForSeed(seedID);
+// === PERBAIKAN plantSeed agar kirim info garden/beds ke waitForSeed ===
+async function plantSeed(userGardensID, userBedsID, seedID, beds) {
+    await waitForSeed(seedID, userGardensID, beds);
     const res = await fetch(`${API_BASE}/control/plant-seed`, {
         method: "POST",
         headers: {
@@ -101,6 +102,7 @@ async function plantSeed(userGardensID, userBedsID, seedID) {
         seedCode: data.data.seedCode,
     };
 }
+
 
 async function harvestSeed(userFarmingID, bed) {
     const res = await fetch(`${API_BASE}/control/collect-harvest`, {
