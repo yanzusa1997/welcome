@@ -1,7 +1,7 @@
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 // === CONFIG ===
-const AUTH_TOKEN = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uSUQiOiI2OGU3ZjUwMWRkOTdmYTFhZjA1ZDIwMTUiLCJ1c2Vyc0lEIjoiNjNmZDRmNGI1MzFhYjVjZTUwMmUzOGMyIiwiaWF0IjoxNzYzODc3MTA5LCJleHAiOjE3NjUwNzcxMDl9.GgXzvQknYIFkOOjsHhr20oqcrhdaOxqrs_UX6zvYQtc";
+const AUTH_TOKEN = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uSUQiOiI2OGU3ZjUwMWRkOTdmYTFhZjA1ZDIwMTUiLCJ1c2Vyc0lEIjoiNjNmZDRmNGI1MzFhYjVjZTUwMmUzOGMyIiwiaWF0IjoxNzY1MDkxNzkxLCJleHAiOjE3NjYyOTE3OTF9.TqouWx8aDeYvCVJreVjLyE2bDzXjXmV3z1HNZtrFNg0";
 const API_BASE = "https://chainers.io/api/farm";
 const REQ_TOKEN = "9a7c210a88af797a"; // NEW REQUIRED
 
